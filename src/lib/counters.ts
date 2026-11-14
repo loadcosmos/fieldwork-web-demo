@@ -10,7 +10,12 @@ type Counts = {
 const dailyLimit = 80;
 const visitorLimit = 10;
 const trackingLimit = 400;
-const local = new Map<string, Counts>();
+// Next.js can bundle each route separately even in the same local process.
+const shared = globalThis as typeof globalThis & { fieldworkCounters?: Map<string, Counts> };
+
+function localCounters() {
+  return shared.fieldworkCounters ??= new Map<string, Counts>();
+}
 
 function utcDay() {
   return new Date().toISOString().slice(0, 10);
@@ -40,6 +45,7 @@ async function readBlob(path: string) {
 
 async function update<T>(key: string, apply: (counts: Counts) => { changed: boolean; value: T }) {
   if (!usesBlob()) {
+    const local = localCounters();
     const counts = local.get(key) ?? empty();
     const result = apply(counts);
     if (result.changed) local.set(key, counts);
@@ -97,6 +103,6 @@ export async function readStats() {
   const key = `events-${day}`;
   const counts = usesBlob()
     ? (await readBlob(`counters/${key}.json`)).counts
-    : local.get(key) ?? empty();
+    : localCounters().get(key) ?? empty();
   return { day, events: counts.events };
 }

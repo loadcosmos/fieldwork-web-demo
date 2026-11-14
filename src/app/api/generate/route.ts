@@ -45,8 +45,17 @@ export async function POST(request: Request) {
     maxRetries: 0,
     abortSignal: AbortSignal.any([request.signal, AbortSignal.timeout(32000)]),
     onError({ error }: { error: unknown }) {
-      const details = error as { name?: string; statusCode?: number; type?: string };
-      console.error("AI Gateway stream failed", details?.name, details?.statusCode, details?.type);
+      const details = error as { name?: string; statusCode?: number; type?: string; message?: string };
+      const message = details?.message ?? "";
+      // Keep prompts and upstream response bodies out of runtime logs.
+      const reasons: Array<[RegExp, string]> = [
+        [/payment method|customer.verification|verify your/i, "account-verification"],
+        [/free tier|free credits|credit balance|insufficient.credit/i, "gateway-credits"],
+        [/not available|not enabled|access to this model/i, "model-access"],
+        [/oidc|token|issuer/i, "project-auth"],
+      ];
+      const reason = reasons.find(([pattern]) => pattern.test(message))?.[1] ?? "upstream";
+      console.error("AI Gateway stream failed", details?.name, details?.statusCode, details?.type, reason);
     },
   };
 
