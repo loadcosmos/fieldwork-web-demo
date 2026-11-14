@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8f8f2;
+  --foreground: #17251e;
+  --primary: #1a392b;
+  --primary-foreground: #fff;
+  --secondary: #e8ede5;
+  --secondary-foreground: #1a392b;
+  --muted: #eef0e9;
+  --muted-foreground: #4b5e52;
+  --accent: #e8ede5;
+  --accent-foreground: #17251e;
+  --destructive: #a12222;
+  --border: #d9dfd4;
+  --input: #b9c6b9;
+  --ring: #526d5e;
+  --radius: .8rem;
+}
+
+@theme inline {
+  --font-sans: "Instrument Sans Variable", system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-md: var(--radius);
+}
+
+body { @apply bg-background text-foreground font-sans antialiased; }
+.site { @apply mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-5 sm:px-10; }
+.site-header { @apply flex h-20 items-center justify-between border-b border-border; }
+.brand { @apply inline-flex items-center gap-2 text-xl font-semibold tracking-tight; }
+.brand-mark { @apply grid size-8 place-items-center rounded-[10px] bg-primary text-[#dfff9b]; }
+.site main { @apply flex-1; }
+.site-footer { @apply mt-8 flex items-center justify-between border-t border-border py-5 text-sm text-muted-foreground; }
+.text-link { @apply rounded-sm font-medium text-muted-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4; }
+.heading { @apply text-[clamp(2.65rem,7vw,5rem)] leading-[.98] font-semibold tracking-[-.063em] text-balance; }
+.page-title { @apply text-4xl leading-[1.02] font-semibold tracking-[-.05em] text-balance sm:text-6xl; }
+.lead { @apply max-w-[34ch] text-lg leading-relaxed text-muted-foreground sm:text-xl; }
+.page { @apply mx-auto max-w-2xl py-10 sm:py-16; }
+.panel { @apply rounded-[1.4rem] border border-border bg-white p-5 sm:p-8; }
+.hero-grid { @apply grid items-center gap-9 py-10 sm:py-16 lg:grid-cols-[1fr_.95fr] lg:gap-16 lg:py-20; }
+.preview { @apply relative overflow-hidden rounded-[1.65rem] bg-[#182f25] p-5 text-white sm:p-8; }
+.preview::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 100% 100%, #335e3b 0%, transparent 70%);
+}
+.preview > * { position: relative; }
