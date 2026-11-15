@@ -1,7 +1,7 @@
 import "@fontsource-variable/instrument-sans";
 import "./globals.css";
 import type { Metadata } from "next";
-import { Sparkles } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Benefits Unlocker — find the money in your benefits PDF",
@@ -13,7 +13,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en">
       <body>
         <div className="site">
-          <header className="site-header"><span className="brand"><span className="brand-mark"><Sparkles size={18} aria-hidden /></span> Benefits Unlocker</span><span className="hidden text-sm text-muted-foreground sm:block">Your plan, made useful.</span></header>
+          <header className="site-header"><span className="brand"><span className="brand-mark" aria-hidden>B<span className="brand-mark-dot">.</span></span><span>Benefits<span className="brand-light"> Unlocker</span></span></span><span className="header-assurance"><ShieldCheck size={16} aria-hidden /> Private by design</span></header>
           <main>{children}</main>
           <footer className="site-footer">Not tax, legal or financial advice. Your PDF is read in memory and not stored. Your numbers stay in this browser.</footer>
         </div>
