@@ -60,3 +60,4 @@ body { @apply bg-background text-foreground font-sans antialiased; }
   background: radial-gradient(ellipse at 100% 100%, #335e3b 0%, transparent 70%);
 }
 .preview > * { position: relative; }
+.field { @apply mt-2 h-11 w-full rounded-xl border border-input bg-white px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring; }

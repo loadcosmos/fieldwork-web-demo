@@ -1,36 +1,36 @@
-# Fieldwork
+# Benefits Unlocker
 
-Fieldwork is a neutral web demo built with Next.js, TypeScript, Tailwind CSS, and shadcn/ui. Paste some text to get an AI-generated summary, three key points, and a next step. Results appear progressively and stay in the browser.
-
-## Run locally
-
-Requires Node.js 22 and npm.
-
-```sh
-npm ci
-cp .env.example .env.local
-npm run dev
-```
-
-Open <http://localhost:3000>. For live generation locally, set `AI_GATEWAY_API_KEY` or `ANTHROPIC_API_KEY` in `.env.local`. You can also pull the linked Vercel project’s development OIDC token. The interface and browser test work without model credentials.
-
-```sh
-npm run check
-npx playwright install chromium --only-shell
-npm run test:e2e
-```
-
-The Playwright test supplies deterministic streamed data at the HTTP boundary. Set `E2E_BASE_URL` to a configured public deployment to run the same flow against the live model instead.
+Benefits Unlocker helps US employees aged 25–45 spot unused value and approaching deadlines in a benefits summary. Upload a PDF, check the extracted plan terms against source quotes, add your own balances, and get a prioritized action list.
 
 ## How it works
 
-- `/`, `/start`, `/result`, and `/plus` cover the demo flow. A random browser ID and the last ten completed results stay in local storage. The original text goes to AI Gateway on submit.
-- `POST /api/generate` validates input, reserves quota, and streams newline-delimited JSON. The server validates the completed result against the same schema the client uses before saving it. Incomplete generations show an error and are discarded.
-- A private Vercel Blob store holds the UTC-day quota and event counters. Conditional writes protect quota across concurrent functions. The demo allows up to 10 generation attempts per browser ID and 80 attempts across the deployment per UTC day. In local development, counters fall back to process memory. Production generation requires shared storage.
-- `/stats` shows today's aggregate visit, start, result, demo checkout, and return events. A visit is counted once per tab session, with a return when that browser was previously seen. Engagement counts come from the client and are capped at 400 events per UTC day.
-- Vercel project OIDC authenticates Gateway calls in production. The team needs active Gateway credits and access to the model configured in `AI_MODEL`. To use Claude Haiku 5.5 through Anthropic directly, add `ANTHROPIC_API_KEY` as a sensitive server-side variable and redeploy. The same route, schema, and quota apply to both connections.
-- Connect a private Blob store to the Vercel project before deploying. The Vercel project can be linked to GitHub for deployments on push, or deployed directly from this directory with `vercel deploy --prod` after signing in.
+`POST /api/parse` reads a PDF in memory and extracts selectable text with `unpdf`. The rule-based parser in `src/lib/benefits/extract.ts` identifies plan terms and returns short evidence quotes. The deterministic calculator in `src/lib/benefits/plan.ts` turns those terms and user inputs into dated actions. Missing terms stay unknown and can be entered by hand.
 
-## Live and simulated
+The calculation uses these formulas:
 
-Live generation, browser history, quotas, and aggregate event counts are implemented. The Plus screen previews a possible plan. Its checkout only demonstrates the click and confirmation. It takes no payment details, moves no money, and unlocks no features. The home screen's example is an illustration.
+- Remaining employer 401(k) match = salary × (match cap % − current contribution %) × match rate × days remaining in year / days in year.
+- FSA at risk = max(0, FSA balance − permitted carryover).
+- Each unused stipend = max(0, annual stipend − amount already used).
+- Possible HSA investment growth = max(0, HSA cash − cash reserve) × an illustrative 7% for one year. Returns are not guaranteed.
+- Possible after-tax 401(k) room = $72,000 total 2026 limit − $24,500 employee deferral limit − estimated employer match, when the plan allows after-tax contributions and Roth conversion. This is contribution room, not cash.
+
+The first three categories sum to “you'll lose by doing nothing”; HSA growth and after-tax room sum to the separate opportunity figure. Amounts are estimates, subject to eligibility and individual circumstances. The app is not tax, legal, or financial advice.
+
+## Privacy and demo scope
+
+The PDF is sent to the server only for in-memory extraction; it is never stored. Terms, personal numbers, completed actions, and Plus demo status stay in this browser's local storage. There is no account or bank connection. The sample PDF runs through the same API as an uploaded PDF. Plus is a demo unlock with no card or charge; it enables a real `.ics` calendar download with one event and a three-day reminder per action. Re-checks after open enrollment and in new plan years describe the proposed Plus product; they are not automated in this demo.
+
+## Run locally
+
+Requires Node.js 22 and npm. No environment variables are required.
+
+```sh
+npm ci
+npm run dev
+npm run check
+npm run build
+npm test
+npm run test:e2e
+```
+
+The Playwright test uses a local development server. Set `E2E_BASE_URL` to run it against an existing URL.

@@ -1,13 +1,11 @@
 import "@fontsource-variable/instrument-sans";
 import "./globals.css";
 import type { Metadata } from "next";
-import { Analytics } from "@/components/analytics";
-import Link from "next/link";
-import { Asterisk } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: { default: "Fieldwork", template: "%s · Fieldwork" },
-  description: "Turn a block of text into a clear summary, key points, and a next step.",
+  title: "Benefits Unlocker — find the money in your benefits PDF",
+  description: "Upload your benefits PDF to find money at risk, deadlines, and clear next steps. No account required.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -15,13 +13,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en">
       <body>
         <div className="site">
-          <header className="site-header">
-            <Link href="/" className="brand"><span className="brand-mark"><Asterisk size={19} strokeWidth={2.6} aria-hidden /></span>Fieldwork</Link>
-            <Link className="text-link text-sm" href="/stats">Stats</Link>
-          </header>
+          <header className="site-header"><span className="brand"><span className="brand-mark"><Sparkles size={18} aria-hidden /></span> Benefits Unlocker</span><span className="hidden text-sm text-muted-foreground sm:block">Your plan, made useful.</span></header>
           <main>{children}</main>
-          <Analytics />
-          <footer className="site-footer"><span>Fieldwork</span><span>Web demo</span></footer>
+          <footer className="site-footer">Not tax, legal or financial advice. Your PDF is read in memory and not stored. Your numbers stay in this browser.</footer>
         </div>
       </body>
     </html>
