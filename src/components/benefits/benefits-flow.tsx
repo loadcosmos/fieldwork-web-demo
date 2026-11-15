@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, CalendarDays, Check, Clock3, FileText, Link2Off, LockKeyhole, Quote, Upload, UserRoundX } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, Clock3, FileText, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Landing } from "@/components/benefits/landing";
 import { buildPlan } from "@/lib/benefits/plan";
 import type { Action, Extraction, TermKey, Terms, UserInput } from "@/lib/benefits/types";
 
@@ -134,6 +135,23 @@ export function BenefitsFlow() {
   const remaining = plan.actions.filter((action) => !done.includes(action.id));
 
   useEffect(() => {
+    if (!("IntersectionObserver" in window)) return;
+    const targets = document.querySelectorAll<HTMLElement>("[data-reveal]");
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) if (entry.isIntersecting) {
+        entry.target.classList.add("is-visible");
+        observer.unobserve(entry.target);
+      }
+    }, { threshold: 0.1, rootMargin: "0px 0px 40px 0px" });
+    targets.forEach((target) => { target.classList.add("will-reveal"); observer.observe(target); });
+    return () => observer.disconnect();
+  }, [step]);
+
+  useEffect(() => {
+    if (step !== "start") window.scrollTo({ top: 0, behavior: "auto" });
+  }, [step]);
+
+  useEffect(() => {
     const timer = window.setTimeout(() => {
       try {
         const raw = localStorage.getItem("benefits-unlocker.v1");
@@ -201,53 +219,65 @@ export function BenefitsFlow() {
     setTerms((current) => ({ ...current, [key]: parsed } as Terms));
   };
 
-  function fields() {
-    return <div className="space-y-8">
-      <section className="panel">
-        <div className="section-heading"><span className="section-number">01 / PLAN TERMS</span><h2 className="text-2xl font-semibold tracking-tight">What we found in your plan</h2><p className="mt-1 text-sm text-muted-foreground">Check the source quotes and correct anything that looks wrong. All fields are editable.</p></div>
-        <div className="grid gap-5 sm:grid-cols-2">
-          {termFields.map(({ key, label, kind, hint }) => {
-            const found = extraction?.found.includes(key) ?? false;
-            const value = terms[key];
-            return <div key={key} className="min-w-0">
-              <label htmlFor={`term-${key}`} className="block text-sm font-semibold">{label}</label>
-              <p className={`mt-1 text-xs ${found ? "text-primary" : "text-muted-foreground"}`}>{found ? "✓ found" : "not in your PDF — fill in if you know it"}</p>
-              {kind === "boolean" ? <select id={`term-${key}`} value={value === null ? "" : value ? "yes" : "no"} onChange={(event) => updateTerm(key, event.target.value, kind)} className="field"><option value="">Unknown</option><option value="yes">Yes</option><option value="no">No</option></select>
-                : <input id={`term-${key}`} type={kind === "text" ? "text" : kind} step={kind === "number" ? "any" : undefined} min={kind === "number" ? 0 : undefined} value={value === null ? "" : String(value)} onChange={(event) => updateTerm(key, event.target.value, kind)} className="field" />}
-              {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
-              {found && extraction?.evidence[key] && <p className="source-quote flex items-start gap-2"><Quote size={16} aria-hidden className="mt-0.5 shrink-0 text-primary" /><span>“{extraction.evidence[key]}”</span></p>}
-            </div>;
-          })}
-        </div>
-      </section>
-      <section className="panel">
-        <div className="section-heading"><span className="section-number">02 / YOUR NUMBERS</span><h2 className="text-2xl font-semibold tracking-tight">Your numbers</h2><p className="mt-1 text-sm text-muted-foreground">Use your current balances. These stay in your browser.</p></div>
-        <div className="grid gap-5 sm:grid-cols-2">
-          {numberFields.map(({ key, label, suffix }) => <div key={key}><label htmlFor={`user-${key}`} className="block text-sm font-semibold">{label} {suffix && <span className="font-normal text-muted-foreground">({suffix})</span>}</label><input id={`user-${key}`} type="number" min="0" step="any" value={user[key]} onChange={(event) => setUser((current) => ({ ...current, [key]: Number(event.target.value) }))} className="field" /></div>)}
-          <div><label htmlFor="coverage" className="block text-sm font-semibold">Health coverage</label><select id="coverage" value={user.coverage} onChange={(event) => setUser((current) => ({ ...current, coverage: event.target.value as UserInput["coverage"] }))} className="field"><option value="self">Self</option><option value="family">Family</option></select></div>
-        </div>
-      </section>
+  function termControl({ key, label, kind, hint }: (typeof termFields)[number]) {
+    const found = extraction?.found.includes(key) ?? false;
+    const value = terms[key];
+    return <div key={key} className={`receipt-term ${found ? "receipt-found" : "receipt-missing"}`}>
+      <div className="receipt-term-heading"><label htmlFor={`term-${key}`}>{label}</label>{found && <span>✓ found</span>}</div>
+      {kind === "boolean" ? <select id={`term-${key}`} value={value === null ? "" : value ? "yes" : "no"} onChange={(event) => updateTerm(key, event.target.value, kind)} className="field"><option value="">Unknown</option><option value="yes">Yes</option><option value="no">No</option></select>
+        : <input id={`term-${key}`} type={kind === "text" ? "text" : kind} step={kind === "number" ? "any" : undefined} min={kind === "number" ? 0 : undefined} value={value === null ? "" : String(value)} onChange={(event) => updateTerm(key, event.target.value, kind)} className="field" />}
+      {hint && <p className="term-hint">{hint}</p>}
+      {found && extraction?.evidence[key] && <p className="source-quote">“{extraction.evidence[key]}”</p>}
     </div>;
   }
 
-  return <div className="flow-shell">
-    <nav className="stepper" aria-label="Progress"><span aria-current={step === "start" ? "step" : undefined}>01 <span>Upload</span></span><span aria-hidden className="step-divider" /><span aria-current={step === "details" ? "step" : undefined}>02 <span>Review</span></span><span aria-hidden className="step-divider" /><span aria-current={step === "result" ? "step" : undefined}>03 <span>Your plan</span></span></nav>
-    {step === "start" && <div className="hero-grid">
-      <div className="hero-copy reveal"><span className="eyebrow"><span className="eyebrow-dot" /> Your benefits, in focus</span><h1 className="heading">Make the most of what&apos;s already yours<span className="heading-period">.</span></h1><p className="lead mt-6">See which benefits may expire, what they could be worth, and what to do next.</p>
-        <div className="hero-actions"><Button size="lg" className="hero-button" onClick={trySample} disabled={busy}><FileText />{busy ? "Reading PDF…" : "Try a sample benefits PDF"}<ArrowRight /></Button><Button size="lg" variant="outline" className="hero-button" onClick={() => uploadRef.current?.click()} disabled={busy}><Upload />Upload my Benefits Summary (PDF)</Button><input ref={uploadRef} className="sr-only" type="file" accept=".pdf,application/pdf" aria-label="Choose benefits PDF" onChange={(event) => { const file = event.target.files?.[0]; if (file) void parseFile(file, false); event.target.value = ""; }} /><div className="hero-links"><a href="/sample-benefits.pdf" target="_blank" rel="noopener noreferrer" className="text-link text-sm underline">View the sample PDF</a><button type="button" onClick={startManual} className="text-link text-sm underline">No PDF? Enter terms by hand</button></div></div>
-        {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">{error} <button className="underline" onClick={startManual}>Enter terms by hand</button></p>}
-        <div className="trust-row" role="group" aria-label="Privacy"><span className="trust-badge"><LockKeyhole size={15} aria-hidden />Read in memory, never stored</span><span className="trust-badge"><UserRoundX size={15} aria-hidden />No account</span><span className="trust-badge"><Link2Off size={15} aria-hidden />No bank connection</span></div>
-      </div>
-      <div className="preview reveal reveal-later"><div className="preview-top"><span className="preview-monogram" aria-hidden>B.</span><span>YOUR PLAN AT A GLANCE</span><span className="preview-top-right">EXAMPLE</span></div><div className="preview-sheet"><div className="preview-sheet-head"><span className="preview-kicker">Potential value at risk</span><span className="preview-spark" aria-hidden>↗</span></div><p className="preview-amount">$3,537</p><p className="preview-note">Illustrative sample result · not your amount</p><div className="preview-rule" /><div className="preview-list"><div><span className="preview-list-icon"><Check size={15} aria-hidden /></span><span>Employer match</span><span>Review</span></div><div><span className="preview-list-icon"><Check size={15} aria-hidden /></span><span>FSA balance</span><span>Review</span></div><div><span className="preview-list-icon"><CalendarDays size={15} aria-hidden /></span><span>Claim deadlines</span><span>Dec 31</span></div></div></div><div className="preview-bottom"><span className="preview-bottom-dot" /> Clear next steps, grounded in your plan <ArrowRight size={16} aria-hidden /></div></div>
-    </div>}
-    {step === "details" && <><div className="page-intro reveal"><span className="eyebrow"><span className="eyebrow-dot" /> THE DETAILS</span><h1 className="page-title">Make it yours.</h1><p className="mt-3 text-muted-foreground">Your PDF gives us the rules. Your numbers make the result useful.</p></div>{fields()}<div className="mt-7 flex flex-wrap gap-3"><Button size="lg" className="h-12 rounded-xl" onClick={() => setStep("result")}>See my action plan <ArrowRight /></Button><Button variant="ghost" onClick={() => setStep("start")}>Choose another PDF</Button></div></>}
-    {step === "result" && <>
+  function fields() {
+    const found = termFields.filter(({ key }) => extraction?.found.includes(key));
+    const missing = termFields.filter(({ key }) => !extraction?.found.includes(key));
+    return <div className="review-stack">
+      <section className="receipt">
+        <div className="receipt-header"><div><span className="receipt-label">YOUR PLAN, IN PLAIN SIGHT</span><h2>What we found in your plan</h2><p>Check each quote against your PDF. Correct any value before continuing.</p></div><FileText size={30} strokeWidth={1.3} aria-hidden /></div>
+        {found.length > 0 && <div className="receipt-grid">{found.map(termControl)}</div>}
+        {missing.length > 0 && <div className="missing-terms"><h3>Not in this PDF — add if you know it</h3><p>Unknown values stay out of calculations that require them.</p><div className="receipt-grid">{missing.map(termControl)}</div></div>}
+      </section>
+      <section className="numbers-section"><div className="numbers-intro"><h2>Your numbers complete the picture.</h2><p>Use current balances. These values stay in your browser.</p></div><div className="numbers-grid">
+        {numberFields.map(({ key, label, suffix }) => <div key={key}><label htmlFor={`user-${key}`}>{label} {suffix && <span>({suffix})</span>}</label><input id={`user-${key}`} type="number" min="0" step="any" value={user[key]} onChange={(event) => setUser((current) => ({ ...current, [key]: Number(event.target.value) }))} className="field" /></div>)}
+        <div><label htmlFor="coverage">Health coverage</label><select id="coverage" value={user.coverage} onChange={(event) => setUser((current) => ({ ...current, coverage: event.target.value as UserInput["coverage"] }))} className="field"><option value="self">Self</option><option value="family">Family</option></select></div>
+      </div></section>
+    </div>;
+  }
+
+  const yearEnd = `${localToday().slice(0, 4)}-12-31`;
+  const timeline = [
+    { label: "Before Dec 31", actions: plan.actions.filter((action) => action.deadline < yearEnd) },
+    { label: "Dec 31", actions: plan.actions.filter((action) => action.deadline === yearEnd) },
+    { label: "Next year", actions: plan.actions.filter((action) => action.deadline > yearEnd) },
+  ];
+  const breakdown = [
+    { name: "Retirement", ids: ["401k-match", "mega-backdoor"] },
+    { name: "Health savings", ids: ["fsa", "hsa-invest"] },
+    { name: "Reimbursements", ids: ["wellness", "learning", "home-office"] },
+  ].map((category) => {
+    const actions = plan.actions.filter((action) => category.ids.includes(action.id));
+    return {
+      name: category.name,
+      lost: actions.filter((action) => action.kind === "lost").reduce((sum, action) => sum + action.amount, 0),
+      opportunity: actions.filter((action) => action.kind === "opportunity").reduce((sum, action) => sum + action.amount, 0),
+    };
+  }).filter((category) => category.lost + category.opportunity > 0);
+
+  return <div className={`flow-shell flow-${step}`}>
+    {step === "start" && <><Landing /><section id="start" className="start-section" aria-labelledby="start-title"><div className="start-intro" data-reveal><h2 id="start-title">Find the value in <em>your</em> plan.</h2><p>Bring a Benefits Summary PDF. We&apos;ll turn it into a reviewable list of terms and actions.</p></div><div className="upload-panel" data-reveal><div className="upload-drop" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); const file = event.dataTransfer.files[0]; if (file && !busy) void parseFile(file, false); }}><UploadCloud size={48} strokeWidth={1.3} aria-hidden /><h3>Drop your benefits PDF here</h3><p>or choose a file to get started</p><Button size="lg" onClick={() => uploadRef.current?.click()} disabled={busy}>{busy ? "Reading PDF…" : "Choose a PDF"}<ArrowRight /></Button><input ref={uploadRef} className="sr-only" type="file" accept=".pdf,application/pdf" aria-label="Choose benefits PDF" onChange={(event) => { const file = event.target.files?.[0]; if (file) void parseFile(file, false); event.target.value = ""; }} /></div><div className="upload-alternative"><p>Want to see it first?</p><Button variant="outline" onClick={trySample} disabled={busy}><FileText size={18} />Try a sample benefits PDF</Button><a href="/sample-benefits.pdf" target="_blank" rel="noopener noreferrer">View the sample PDF</a><button type="button" onClick={startManual}>No PDF? Enter terms by hand</button></div></div>{error && <p role="alert" className="upload-error">{error} <button onClick={startManual}>Enter terms by hand</button></p>}</section></>}
+    {step !== "start" && <nav className="flow-progress" aria-label="Progress"><span className="progress-complete">Upload <Check size={14} aria-hidden /></span><span aria-current={step === "details" ? "step" : undefined}>Review</span><span aria-current={step === "result" ? "step" : undefined}>Your plan</span></nav>}
+    {step === "details" && <div className="work-area"><div className="work-intro"><h1>First, check what we read.</h1><p>Your PDF supplies the rules. Your numbers make the result useful.</p></div>{fields()}<div className="review-actions"><Button size="lg" onClick={() => setStep("result")}>See my action plan <ArrowRight /></Button><Button variant="ghost" onClick={() => setStep("start")}>Choose another PDF</Button></div></div>}
+    {step === "result" && <div className="work-area result-area">
       {returning && <div className="returning-note"><Check size={17} aria-hidden />Welcome back — {remaining.length} actions left{remaining[0] ? `, next deadline ${formatDeadline(remaining[0].deadline)}` : ""}</div>}
-      <div className="result-hero reveal"><div className="result-hero-top"><p className="result-eyebrow">YOUR ACTION PLAN</p><span className="result-hero-mark" aria-hidden>✳</span></div><h1 className="result-title"><AnimatedAmount value={plan.totalAtRisk} /><span>you&apos;ll lose by doing nothing</span></h1><div className="result-hero-bottom"><p>+ {money(plan.totalOpportunity)} of tax-advantaged room / growth you&apos;re skipping</p><span>BASED ON YOUR PLAN</span></div></div>
-      {plan.actions.length > 0 && <div className="actions-heading"><div><span className="section-number">YOUR NEXT STEPS</span><h2 className="text-2xl font-semibold tracking-tight">Your actions</h2></div><p role="status" aria-atomic="true" className="progress-pill">{plan.actions.length - remaining.length} of {plan.actions.length} done</p></div>}
-      <div className="space-y-3">{plan.actions.length === 0 ? <div className="panel"><h2 className="text-xl font-semibold">No actions yet</h2><p className="mt-2 text-sm text-muted-foreground">We could not identify a benefit to calculate. Add plan terms or your balances below to see what may be available.</p></div> : plan.actions.map((action, index) => <article key={action.id} className={`panel action-card ${done.includes(action.id) ? "action-done" : ""}`}><div className="flex items-start gap-3 sm:gap-4"><label className="action-checkbox"><input type="checkbox" checked={done.includes(action.id)} onChange={(event) => setDone((current) => event.target.checked ? [...current, action.id] : current.filter((id) => id !== action.id))} aria-label={`Done: ${action.title}`} className="sr-only" /><Check size={20} aria-hidden className={done.includes(action.id) ? "" : "opacity-0"} /></label><div className="min-w-0 flex-1"><div className="action-card-top"><div><span className="action-index">ACTION {String(index + 1).padStart(2, "0")}</span><h3 className="text-lg font-semibold">{action.title}</h3></div><strong className="action-amount">{money(action.amount)}</strong></div><p className={`deadline-chip mt-2 ${deadlineTone(action.deadline)}`}><Clock3 size={14} aria-hidden />{formatDeadline(action.deadline)}</p><p className="mt-3 text-sm leading-relaxed text-muted-foreground">{action.detail}</p></div></div></article>)}</div>
-      <details className="mt-8"><summary className="cursor-pointer text-sm font-semibold underline underline-offset-4">Edit plan terms and your numbers</summary><div className="mt-5">{fields()}</div></details>
-      <section className="plus-panel"><div className="flex flex-wrap justify-between gap-4"><div><p className="plus-eyebrow">Stay ahead of every deadline</p><h2 className="mt-2 text-2xl font-semibold">Benefits Unlocker Plus</h2></div><p className="text-lg font-semibold">$179/year <span className="text-sm font-normal text-[#d7e9da]">or</span> $24/month</p></div><p className="mt-4 max-w-2xl text-sm leading-relaxed text-[#d7e9da]">Get a calendar file with every deadline and reminders. Re-check after open enrollment and each new plan year.</p><div className="mt-6 flex flex-wrap gap-3">{!plus && <Button variant="secondary" className="h-auto min-h-11 rounded-xl" onClick={() => setPlus(true)}>Unlock Plus (demo — no card, nothing charged)</Button>}{plus && <Button variant="secondary" className="h-auto min-h-11 rounded-xl" onClick={() => downloadCalendar(plan.actions)}><CalendarDays />Download deadlines (.ics)</Button>}</div>{plus && <p className="mt-3 text-xs text-[#d7e9da]">Demo unlocked. No payment was made.</p>}</section>
-    </>}
+      <section className="outcome-screen"><div><p className="outcome-label">Based on your plan</p><h1 className="outcome-number"><AnimatedAmount value={plan.totalAtRisk} /></h1><p className="outcome-sentence">you&apos;ll lose by doing nothing</p></div><p className="outcome-opportunity">Plus <strong>{money(plan.totalOpportunity)}</strong> in tax-advantaged room or potential growth to explore</p></section>
+      <section className="timeline-section" aria-labelledby="timeline-title"><div className="result-section-head"><h2 id="timeline-title">What comes due, and when.</h2><p>{plan.actions.length} actions across your plan</p></div><div className="timeline-line">{timeline.map((group) => <div className="timeline-stop" key={group.label}><span className="timeline-node" /><strong>{group.label}</strong><div className="timeline-dots" aria-label={`${group.actions.length} actions due ${group.label}`}>{group.actions.map((action) => <span key={action.id} title={`${action.title}: ${money(action.amount)}`} />)}</div><small>{group.actions.length} {group.actions.length === 1 ? "action" : "actions"}</small></div>)}</div></section>
+      <section className="breakdown-section" aria-labelledby="breakdown-title"><div className="result-section-head"><h2 id="breakdown-title">Where the value sits.</h2><div className="bar-legend"><span><i className="legend-lost" />At risk</span><span><i className="legend-opportunity" />Opportunity</span></div></div><div className="breakdown-rows">{breakdown.map((category) => <div className="breakdown-row" key={category.name}><span>{category.name}</span><div className="breakdown-track" role="img" aria-label={`${category.name}: ${money(category.lost)} at risk and ${money(category.opportunity)} in opportunity`}><i className="bar-lost" style={{ width: `${category.lost / (category.lost + category.opportunity) * 100}%` }} /><i className="bar-opportunity" style={{ width: `${category.opportunity / (category.lost + category.opportunity) * 100}%` }} /></div><strong>{money(category.lost + category.opportunity)}</strong></div>)}</div><p className="breakdown-note">Each bar shows the mix within its category. Opportunity includes room or estimated growth, not cash you can claim today.</p></section>
+      <div className="result-layout"><div className="action-column"><div className="result-section-head"><h2>Your next moves.</h2><p>{remaining.length} still to do</p></div>{plan.actions.length === 0 ? <div className="empty-actions"><h3>No actions yet</h3><p>We could not identify a benefit to calculate. Add plan terms or balances below.</p></div> : plan.actions.map((action, index) => <article key={action.id} className={`action-card ${done.includes(action.id) ? "action-done" : ""}`}><label className="action-checkbox"><input type="checkbox" checked={done.includes(action.id)} onChange={(event) => setDone((current) => event.target.checked ? [...current, action.id] : current.filter((id) => id !== action.id))} aria-label={`Done: ${action.title}`} className="sr-only" /><Check size={20} aria-hidden className={done.includes(action.id) ? "" : "opacity-0"} /></label><div className="action-body"><div className="action-meta"><span>Action {String(index + 1).padStart(2, "0")}</span><span className={`deadline-chip ${deadlineTone(action.deadline)}`}><Clock3 size={14} aria-hidden />{formatDeadline(action.deadline)}</span></div><div className="action-title-row"><h3>{action.title}</h3><strong>{money(action.amount)}</strong></div><p>{action.detail}</p></div></article>)}</div>
+        <aside className="summary-card" aria-label="Plan summary"><div className="summary-top"><span>YOUR PLAN</span><strong>{money(plan.totalAtRisk)} <small>at risk</small></strong><p>{money(plan.totalOpportunity)} in opportunity</p></div><div className="summary-progress"><div className="progress-ring" style={{ background: `conic-gradient(#a9d9c4 ${plan.actions.length ? (plan.actions.length - remaining.length) / plan.actions.length * 100 : 0}%, #3a5551 0)` }}><span>{plan.actions.length - remaining.length}<small>of {plan.actions.length}</small></span></div><p>actions completed</p></div><div className="summary-plus"><h3>Keep every deadline close.</h3><p>Plus adds a calendar file with reminders. $179/year or $24/month.</p><p className="demo-note">Demo — nothing is charged.</p>{!plus ? <Button variant="secondary" onClick={() => setPlus(true)}>Unlock Plus <ArrowRight size={17} /></Button> : <Button variant="secondary" onClick={() => downloadCalendar(plan.actions)}><CalendarDays size={18} />Download deadlines (.ics)</Button>}{plus && <small>Demo unlocked. No payment was made.</small>}</div></aside></div>
+      <details className="edit-details"><summary>Edit plan terms and your numbers</summary><div>{fields()}</div></details>
+    </div>}
   </div>;
 }

@@ -1,4 +1,6 @@
 import "@fontsource-variable/instrument-sans";
+import "@fontsource/instrument-serif/400.css";
+import "@fontsource/instrument-serif/400-italic.css";
 import "./globals.css";
 import type { Metadata } from "next";
 import { ShieldCheck } from "lucide-react";
